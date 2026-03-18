@@ -20,6 +20,7 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: 'gradle'
     
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -27,25 +28,12 @@ jobs:
     - name: Create local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > local.properties
     
-    - name: Build with Gradle Wrapper
+    - name: Generate Gradle Wrapper
       run: |
-        mkdir -p gradle/wrapper
-        cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-EOF
-        
-        # Download gradle wrapper jar
-        curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.0.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
-        
-        # Make gradlew executable
-        chmod +x gradlew
+        gradle wrapper --gradle-version 8.0
     
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug --no-daemon --stacktrace
+    - name: Build with Gradle Wrapper
+      run: ./gradlew assembleDebug --stacktrace
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -53,18 +41,3 @@ EOF
         name: translator-app-apk
         path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
-    
-    - name: Create Release
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
-      with:
-        files: app/build/outputs/apk/debug/app-debug.apk
-        tag_name: v${{ github.run_number }}
-        name: Release v${{ github.run_number }}
-        body: |
-          中文-乌兹别克语翻译应用
-          
-          构建时间: ${{ github.event.head_commit.timestamp }}
-          提交: ${{ github.event.head_commit.message }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
